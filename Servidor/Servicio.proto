@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package Servicio;
+
+service ClienteServidor {
+  rpc InicioSesion(Session) returns (TodoOk);
+  rpc SolicitarConexion(Conectar) returns (IpSolicitado);
+  rpc EnvioMensaje(Mensaje) returns (TodoOk);
+  rpc CerrarSesion(Session) returns (TodoOk);
+}
+
+service ServidorServidor {
+  rpc SolicitarConexionServidor(Session) returns (TodoOk);
+}
+
+message Mensaje {
+  string NombreRemitente = 1;
+  string MensajeRemitente = 2;
+}
+
+message Session {
+  string Nombre = 1;
+  string IP = 2;
+}
+
+message Conectar {
+  string NombreSolicitante = 1;
+  string NombreSolicitado = 2;
+}
+
+message IpSolicitado {
+  string IP = 1;
+}
+
+message TodoOk {
+  int32 ok = 1;
+}
