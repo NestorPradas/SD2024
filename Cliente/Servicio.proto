@@ -7,6 +7,7 @@ service ClienteServidor {
   rpc SolicitarConexion(Conectar) returns (IpSolicitado);
   rpc EnvioMensaje(Mensaje) returns (TodoOk);
   rpc CerrarSesion(Session) returns (TodoOk);
+  rpc ConsultarUsuarios(TodoOk) returns (UsuarioLista);
 }
 
 service ServidorServidor {
@@ -16,6 +17,10 @@ service ServidorServidor {
 message Mensaje {
   string NombreRemitente = 1;
   string MensajeRemitente = 2;
+}
+
+message UsuarioLista {
+  repeated string array_usuarios = 1;
 }
 
 message Session {
@@ -34,4 +39,5 @@ message IpSolicitado {
 
 message TodoOk {
   int32 ok = 1;
+  string texto = 2;
 }

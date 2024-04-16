@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0eServicio.proto\x12\x08Servicio\"<\n\x07Mensaje\x12\x17\n\x0fNombreRemitente\x18\x01 \x01(\t\x12\x18\n\x10MensajeRemitente\x18\x02 \x01(\t\"%\n\x07Session\x12\x0e\n\x06Nombre\x18\x01 \x01(\t\x12\n\n\x02IP\x18\x02 \x01(\t\"?\n\x08\x43onectar\x12\x19\n\x11NombreSolicitante\x18\x01 \x01(\t\x12\x18\n\x10NombreSolicitado\x18\x02 \x01(\t\"\x1a\n\x0cIpSolicitado\x12\n\n\x02IP\x18\x01 \x01(\t\"\x14\n\x06TodoOk\x12\n\n\x02ok\x18\x01 \x01(\x05\x32\xf1\x01\n\x0f\x43lienteServidor\x12\x33\n\x0cInicioSesion\x12\x11.Servicio.Session\x1a\x10.Servicio.TodoOk\x12?\n\x11SolicitarConexion\x12\x12.Servicio.Conectar\x1a\x16.Servicio.IpSolicitado\x12\x33\n\x0c\x45nvioMensaje\x12\x11.Servicio.Mensaje\x1a\x10.Servicio.TodoOk\x12\x33\n\x0c\x43\x65rrarSesion\x12\x11.Servicio.Session\x1a\x10.Servicio.TodoOk2T\n\x10ServidorServidor\x12@\n\x19SolicitarConexionServidor\x12\x11.Servicio.Session\x1a\x10.Servicio.TodoOkb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0eServicio.proto\x12\x08Servicio\"<\n\x07Mensaje\x12\x17\n\x0fNombreRemitente\x18\x01 \x01(\t\x12\x18\n\x10MensajeRemitente\x18\x02 \x01(\t\"&\n\x0cUsuarioLista\x12\x16\n\x0e\x61rray_usuarios\x18\x01 \x03(\t\"%\n\x07Session\x12\x0e\n\x06Nombre\x18\x01 \x01(\t\x12\n\n\x02IP\x18\x02 \x01(\t\"?\n\x08\x43onectar\x12\x19\n\x11NombreSolicitante\x18\x01 \x01(\t\x12\x18\n\x10NombreSolicitado\x18\x02 \x01(\t\"\x1a\n\x0cIpSolicitado\x12\n\n\x02IP\x18\x01 \x01(\t\"#\n\x06TodoOk\x12\n\n\x02ok\x18\x01 \x01(\x05\x12\r\n\x05texto\x18\x02 \x01(\t2\xb0\x02\n\x0f\x43lienteServidor\x12\x33\n\x0cInicioSesion\x12\x11.Servicio.Session\x1a\x10.Servicio.TodoOk\x12?\n\x11SolicitarConexion\x12\x12.Servicio.Conectar\x1a\x16.Servicio.IpSolicitado\x12\x33\n\x0c\x45nvioMensaje\x12\x11.Servicio.Mensaje\x1a\x10.Servicio.TodoOk\x12\x33\n\x0c\x43\x65rrarSesion\x12\x11.Servicio.Session\x1a\x10.Servicio.TodoOk\x12=\n\x11\x43onsultarUsuarios\x12\x10.Servicio.TodoOk\x1a\x16.Servicio.UsuarioLista2T\n\x10ServidorServidor\x12@\n\x19SolicitarConexionServidor\x12\x11.Servicio.Session\x1a\x10.Servicio.TodoOkb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -23,16 +23,18 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   _globals['_MENSAJE']._serialized_start=28
   _globals['_MENSAJE']._serialized_end=88
-  _globals['_SESSION']._serialized_start=90
-  _globals['_SESSION']._serialized_end=127
-  _globals['_CONECTAR']._serialized_start=129
-  _globals['_CONECTAR']._serialized_end=192
-  _globals['_IPSOLICITADO']._serialized_start=194
-  _globals['_IPSOLICITADO']._serialized_end=220
-  _globals['_TODOOK']._serialized_start=222
-  _globals['_TODOOK']._serialized_end=242
-  _globals['_CLIENTESERVIDOR']._serialized_start=245
-  _globals['_CLIENTESERVIDOR']._serialized_end=486
-  _globals['_SERVIDORSERVIDOR']._serialized_start=488
-  _globals['_SERVIDORSERVIDOR']._serialized_end=572
+  _globals['_USUARIOLISTA']._serialized_start=90
+  _globals['_USUARIOLISTA']._serialized_end=128
+  _globals['_SESSION']._serialized_start=130
+  _globals['_SESSION']._serialized_end=167
+  _globals['_CONECTAR']._serialized_start=169
+  _globals['_CONECTAR']._serialized_end=232
+  _globals['_IPSOLICITADO']._serialized_start=234
+  _globals['_IPSOLICITADO']._serialized_end=260
+  _globals['_TODOOK']._serialized_start=262
+  _globals['_TODOOK']._serialized_end=297
+  _globals['_CLIENTESERVIDOR']._serialized_start=300
+  _globals['_CLIENTESERVIDOR']._serialized_end=604
+  _globals['_SERVIDORSERVIDOR']._serialized_start=606
+  _globals['_SERVIDORSERVIDOR']._serialized_end=690
 # @@protoc_insertion_point(module_scope)

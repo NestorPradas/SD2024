@@ -34,6 +34,11 @@ class ClienteServidorStub(object):
                 request_serializer=Servicio__pb2.Session.SerializeToString,
                 response_deserializer=Servicio__pb2.TodoOk.FromString,
                 )
+        self.ConsultarUsuarios = channel.unary_unary(
+                '/Servicio.ClienteServidor/ConsultarUsuarios',
+                request_serializer=Servicio__pb2.TodoOk.SerializeToString,
+                response_deserializer=Servicio__pb2.UsuarioLista.FromString,
+                )
 
 
 class ClienteServidorServicer(object):
@@ -63,6 +68,12 @@ class ClienteServidorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ConsultarUsuarios(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ClienteServidorServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -85,6 +96,11 @@ def add_ClienteServidorServicer_to_server(servicer, server):
                     servicer.CerrarSesion,
                     request_deserializer=Servicio__pb2.Session.FromString,
                     response_serializer=Servicio__pb2.TodoOk.SerializeToString,
+            ),
+            'ConsultarUsuarios': grpc.unary_unary_rpc_method_handler(
+                    servicer.ConsultarUsuarios,
+                    request_deserializer=Servicio__pb2.TodoOk.FromString,
+                    response_serializer=Servicio__pb2.UsuarioLista.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -161,6 +177,23 @@ class ClienteServidor(object):
         return grpc.experimental.unary_unary(request, target, '/Servicio.ClienteServidor/CerrarSesion',
             Servicio__pb2.Session.SerializeToString,
             Servicio__pb2.TodoOk.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ConsultarUsuarios(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/Servicio.ClienteServidor/ConsultarUsuarios',
+            Servicio__pb2.TodoOk.SerializeToString,
+            Servicio__pb2.UsuarioLista.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
