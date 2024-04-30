@@ -15,7 +15,6 @@ def obtener_ip():
 
 def start_client_server():
     serve(obtener_ip(), ventana_conexion.nombre)
-        
 
 ventana_conexion = VentanaConexion()
 ventana_conexion.iniciar()

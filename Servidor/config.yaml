@@ -1,0 +1,21 @@
+grpc_server:
+  ip: '10.10.1.54'
+  port: '50051' 
+
+grpc_client:
+  port: '50050'
+
+redis:
+  image: 'redis:latest'
+  name: 'redis'
+  ip: 'localhost'
+  port: 6379
+
+rabbit:
+  image: 'rabbitmq:3.13-management'
+  name: 'rabbitmq'
+  ip: '10.10.1.54'
+  port: 5672
+  http: 15672
+  user: 'guest'
+  pwd: 'guest'

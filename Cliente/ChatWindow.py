@@ -9,11 +9,13 @@ import Servicio_pb2_grpc
 import socket
 import pika
 
+import yaml
+
 class ChatWindowGRPC(threading.Thread, Servicio_pb2_grpc.ClienteServidor):
     def __init__(self, minombre, nombre, message_queue, IP):
         super().__init__()
         self.message_queue = message_queue
-        self.Ip = IP + ":50050"
+        self.Ip = IP
         self.NombreConectado = nombre
         self.minombre = minombre
         self.running = True
@@ -89,33 +91,34 @@ class ChatWindowGRPC(threading.Thread, Servicio_pb2_grpc.ClienteServidor):
             self.chat_area.config(state='disabled') 
             self.input_entry.delete(0, "end")
 
-    def obtener_ip(self):
-        try:
-            host_name = socket.gethostname()
-            direccion_ip = socket.gethostbyname(host_name)
-            return str(direccion_ip)
-        except Exception as e:
-            print("Error al obtener la dirección IP:", e)
-
     def on_closing(self):
-        if self.conectado:
-            channel = grpc.insecure_channel(self.Ip)
-            stub = Servicio_pb2_grpc.ClienteServidorStub(channel)
-            response = stub.CerrarSesion(Servicio_pb2.Session(Nombre=self.minombre, IP=''))
+        channel = grpc.insecure_channel(self.Ip)
+        stub = Servicio_pb2_grpc.ClienteServidorStub(channel)
+        response = stub.CerrarSesion(Servicio_pb2.Session(Nombre=self.minombre, IP=''))
 
         self.running = False  
         self.root.destroy()
 
 class ChatWindowMQ(threading.Thread):
-    def __init__(self, minombre, nombre, message_queue):
+    def __init__(self, minombre, nombre, message_queue, persistencia):
         super().__init__()
         self.message_queue = message_queue
         self.NombreConectado = nombre
         self.minombre = minombre
         self.running = True
         self.conectado = True
+
+        self.persistencia = persistencia
+
         
-        connection = pika.BlockingConnection(pika.ConnectionParameters('10.10.1.54'))
+        with open('config.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+
+        file.close()
+
+        self.rabbit_ip = config['rabbit']['ip']
+        
+        connection = pika.BlockingConnection(pika.ConnectionParameters(self.rabbit_ip))
         self.channel = connection.channel()
 
     def run(self):
@@ -175,21 +178,13 @@ class ChatWindowMQ(threading.Thread):
         message = self.input_entry.get()
         if message and self.conectado: 
             # enviar mensaje al exchange f"Publico: {self.nombreconectado}"
-            self.channel.basic_publish(exchange=f"Publico: {self.NombreConectado}", routing_key='', body=f"{self.minombre}: {message}")
-            # con mi nombre delante
+            if self.persistencia == 0:
+                self.channel.basic_publish(exchange=f"Publico: {self.NombreConectado}", routing_key='', body=f"{self.minombre}: {message}")
+            else:
+                self.channel.basic_publish(exchange=f"Publico: {self.NombreConectado}", routing_key='', body=f"{self.minombre}: {message}",properties=pika.BasicProperties(delivery_mode=2))
             self.input_entry.delete(0, "end")
-            None
 
     def on_closing(self):
         self.channel.basic_publish(exchange=f"Publico: {self.NombreConectado}", routing_key='', body=f"{self.minombre} ha salido del chat")
         self.running = False  
         self.root.destroy()
-
-if __name__ == "__main__":
-    message_queue = Queue()
-
-    chat_window = ChatWindowGRPC("nestor", "nestor", message_queue, "10.10.1.54")
-    chat_window.start()
-    
-    time.sleep(0.1)
-    chat_window.join()

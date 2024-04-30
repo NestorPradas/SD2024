@@ -20,6 +20,8 @@ class VentanaConexion:
         self.boton_conectar.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
     def conectar(self, event=None):
+        # Comprobar si ya existe el cliente mediante GRPC ¿?
+
         self.nombre = self.nombre_entry.get()
         self.ventana.destroy()
 

@@ -1,15 +1,16 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from ChatWindow import ChatWindowMQ
 
-import pika
 from queue import Queue
 import socket
 import grpc
 import Servicio_pb2
 import Servicio_pb2_grpc
-import threading
 import requests
+
+import random
+import yaml
 
 class VistaInicial(tk.Frame):
     def __init__(self, master, vista, NombreCliente):
@@ -21,7 +22,7 @@ class VistaInicial(tk.Frame):
         boton1 = tk.Button(self, text=f"Iniciar Chat Privado", command=vista[0], height=alto_boton, width=400)
         boton2 = tk.Button(self, text=f"Iniciar Chat Publico", command=vista[2], height=alto_boton, width=400)
         boton3 = tk.Button(self, text=f"Descubrir", command=vista[1], height=alto_boton, width=400)
-        boton4 = tk.Button(self, text=f"Botón 4", command=vista[0], height=alto_boton, width=400)
+        boton4 = tk.Button(self, text=f"Insult Channel", command=vista[3], height=alto_boton, width=400)
         
         boton1.grid(row=0, column=0, sticky="nsew")
         boton2.grid(row=1, column=0, sticky="nsew")
@@ -34,10 +35,18 @@ class VistaInicial(tk.Frame):
         self.grid_rowconfigure(3, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
+        with open('config.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+
+        file.close()
+
+        self.grpc_server_ip = config['grpc_server']['ip']
+        self.grpc_server_port = config['grpc_server']['port']
+
         master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def on_closing(self):
-        channel = grpc.insecure_channel("10.10.1.54:50051")
+        channel = grpc.insecure_channel(f"{self.grpc_server_ip}:{self.grpc_server_port}")
         stub = Servicio_pb2_grpc.ClienteServidorStub(channel)
         response = stub.CerrarSesion(Servicio_pb2.Session(Nombre=self.nombre, IP=''))
 
@@ -53,6 +62,15 @@ class VistaSecundaria(tk.Frame):
 
         self.nombre = NombreCliente
 
+        with open('config.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+
+        file.close()
+
+        self.grpc_server_ip = config['grpc_server']['ip']
+        self.grpc_server_port = config['grpc_server']['port']
+        self.client_port = config['grpc_client']['port'] 
+
         boton_volver_atras = tk.Button(self, text="Volver a la Vista Inicial", command=volver_vista_inicial)
         boton_volver_atras.place(x=10, y=10)
 
@@ -67,7 +85,7 @@ class VistaSecundaria(tk.Frame):
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def on_closing(self):
-        channel = grpc.insecure_channel("10.10.1.54:50051")
+        channel = grpc.insecure_channel(f"{self.grpc_server_ip}:{self.grpc_server_port}")
         stub = Servicio_pb2_grpc.ClienteServidorStub(channel)
         response = stub.CerrarSesion(Servicio_pb2.Session(Nombre=self.nombre, IP=''))
 
@@ -87,17 +105,18 @@ class VistaSecundaria(tk.Frame):
         
         if texto:
             print(f"Texto introducido: {texto}")
-            channel1 = grpc.insecure_channel('10.10.1.54:50051') ## servidor central
+            channel1 = grpc.insecure_channel(f'{self.grpc_server_ip}:{self.grpc_server_port}') ## servidor central
             stub1 = Servicio_pb2_grpc.ClienteServidorStub(channel1)
 
             response = stub1.SolicitarConexion(Servicio_pb2.Conectar(NombreSolicitante=self.nombre, NombreSolicitado=texto))
             print("Response received from server:", response)
-
-            channel2 = grpc.insecure_channel(str(self.obtener_ip())+':50050') ## mi servidor
-            stub = Servicio_pb2_grpc.ServidorServidorStub(channel2)
-            response2 = stub.SolicitarConexionServidor(Servicio_pb2.Session(Nombre=texto, IP=response.IP)) 
-            print("Respuesta de mi servidor: ", response2)
-
+            if response.IP != "No existe":
+                channel2 = grpc.insecure_channel(str(self.obtener_ip())+f':{self.client_port}') ## mi servidor
+                stub = Servicio_pb2_grpc.ServidorServidorStub(channel2)
+                response2 = stub.SolicitarConexionServidor(Servicio_pb2.Session(Nombre=texto, IP=response.IP)) 
+                print("Respuesta de mi servidor: ", response2)
+            else:
+                messagebox.showerror("Error", "Este cliente no esta conectado")
         self.entry_texto.delete(0, tk.END)
 
 # Discover
@@ -132,6 +151,20 @@ class VistaTerciaria(tk.Frame):
         self.frame_contenedor = tk.Frame(self.canvas)
         self.canvas.create_window((0, 0), window=self.frame_contenedor, anchor="nw")
 
+        with open('config.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+        file.close()
+
+        self.grpc_server_ip = config['grpc_server']['ip']
+        self.grpc_server_port = config['grpc_server']['port']
+
+        self.client_port = config['grpc_client']['port'] 
+
+        self.rabbit_ip = config['rabbit']['ip']
+        self.rabbit_http = config['rabbit']['http']
+        self.rabbit_user = config['rabbit']['user']
+        self.rabbit_pwd = config['rabbit']['pwd']
+
         array_exchanges = self.pedir_exchanges()
 
         self.chat_publicos = chat_publicos
@@ -141,6 +174,8 @@ class VistaTerciaria(tk.Frame):
         for i in array_exchanges:
             self.agregar_fila(fila, f"{i}")
             fila += 1
+
+        
 
         # Pedir informacion a RabbitMQ y añadirla en pantalla como "Publico:"
 
@@ -157,18 +192,18 @@ class VistaTerciaria(tk.Frame):
         self.grid_columnconfigure(1, weight=8)
 
     def on_closing(self):
-        channel = grpc.insecure_channel("10.10.1.54:50051")
+        channel = grpc.insecure_channel(f"{self.grpc_server_ip}:{self.grpc_server_port}")
         stub = Servicio_pb2_grpc.ClienteServidorStub(channel)
         response = stub.CerrarSesion(Servicio_pb2.Session(Nombre=self.nombre, IP=''))
 
         self.root.destroy()
 
     def pedir_exchanges(self):
-        
-        username = 'guest'
-        password = 'guest'
-        host = '10.10.1.54'
-        port = '15672'  # Puerto para la API de RabbitMQ
+
+        username = f'{self.rabbit_user}'
+        password = f'{self.rabbit_pwd}'
+        host = f'{self.rabbit_ip}'
+        port = f'{self.rabbit_http}'  # Puerto para la API de RabbitMQ
 
         url = f'http://{host}:{port}/api/exchanges'
 
@@ -205,13 +240,13 @@ class VistaTerciaria(tk.Frame):
         print("Dato clicado:", valor)
         tipo, nombreConexion = valor.split()
         if tipo == "Privado:":
-            channel1 = grpc.insecure_channel('10.10.1.54:50051') ## servidor central
+            channel1 = grpc.insecure_channel(f'{self.grpc_server_ip}:{self.grpc_server_port}') ## servidor central
             stub1 = Servicio_pb2_grpc.ClienteServidorStub(channel1)
 
             response = stub1.SolicitarConexion(Servicio_pb2.Conectar(NombreSolicitante=self.nombre, NombreSolicitado=nombreConexion))
             print("Response received from server:", response)
 
-            channel2 = grpc.insecure_channel(str(self.obtener_ip())+':50050') ## mi servidor
+            channel2 = grpc.insecure_channel(str(self.obtener_ip())+f':{self.client_port}') ## mi servidor
             stub = Servicio_pb2_grpc.ServidorServidorStub(channel2)
             response2 = stub.SolicitarConexionServidor(Servicio_pb2.Session(Nombre=nombreConexion, IP=response.IP)) 
             print("Respuesta de mi servidor: ", response2)
@@ -224,7 +259,7 @@ class VistaTerciaria(tk.Frame):
             except Exception:
                 print("Error al conectar con el servidor")
 
-            chat_window = ChatWindowMQ(self.nombre, nombreConexion, self.chat_publicos[f"{valor}"])
+            chat_window = ChatWindowMQ(self.nombre, nombreConexion, self.chat_publicos[f"{valor}"], 1)
             chat_window.start()
 
     def volver_a_principal(self):
@@ -243,11 +278,19 @@ class VistaTerciaria(tk.Frame):
 
 # Chat publico
 class VistaQuarta(tk.Frame):
-    def __init__(self, master, volver_vista_inicial, NombreCliente, conexionMQ, chat_publicos):
+    def __init__(self, master, volver_vista_inicial, NombreCliente, conexionMQ, chat_publicos): #
         tk.Frame.__init__(self, master)
         self.master = master
         self.master.geometry("400x500")
         self.master.resizable(False, False)
+
+        with open('config.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+
+        file.close()
+
+        self.grpc_server_ip = config['grpc_server']['ip']
+        self.grpc_server_port = config['grpc_server']['port']
 
         self.conexionMQ = conexionMQ
         self.chat_publicos = chat_publicos
@@ -259,7 +302,11 @@ class VistaQuarta(tk.Frame):
         self.entry_texto = tk.Entry(self)
         self.entry_texto.place(relx=0.5, rely=0.4, anchor="center")
 
-        boton_imprimir = tk.Button(self, text="Conexion a cliente", command=self.imprimir_texto)
+        self.var = tk.IntVar()
+        check = tk.Checkbutton(self.master, text="Mensajes persistentes", variable=self.var)
+        check.place(relx=0.5, rely=0.45, anchor="center")
+
+        boton_imprimir = tk.Button(self, text="Conexion a caht publico", command=self.imprimir_texto)
         boton_imprimir.place(relx=0.5, rely=0.5, anchor="center")
 
         self.entry_texto.bind("<Return>", lambda event: self.imprimir_texto())
@@ -267,7 +314,7 @@ class VistaQuarta(tk.Frame):
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def on_closing(self):
-        channel = grpc.insecure_channel("10.10.1.54:50051")
+        channel = grpc.insecure_channel(f"{self.grpc_server_ip}:{self.grpc_server_port}")
         stub = Servicio_pb2_grpc.ClienteServidorStub(channel)
         response = stub.CerrarSesion(Servicio_pb2.Session(Nombre=self.nombre, IP=''))
 
@@ -275,21 +322,23 @@ class VistaQuarta(tk.Frame):
 
     def recibir_mensaje(self, ch, method, properties, body):
         try:
-            if method.exchange:
-                print(f"[VistaCliente] {method.exchange}, {body.decode()} ")
+            if method.exchange in self.chat_publicos:
+                self.chat_publicos[method.exchange].put(body.decode())
+            else: 
+                self.chat_publicos[method.exchange] = Queue()
                 self.chat_publicos[method.exchange].put(body.decode())
         except Exception:
             pass
 
-    def consume(self):
-        self.conexionMQ.basic_consume(queue=f"Privado: {self.nombre}", on_message_callback=self.recibir_mensaje, auto_ack=True)
-        print(f"[Vistas] reiniciando consume")
-        self.conexionMQ.start_consuming()
+    #def consume(self):
+    #    self.conexionMQ.basic_consume(queue=f"Privado: {self.nombre}", on_message_callback=self.recibir_mensaje, auto_ack=True)
+    #    print(f"[Vistas] reiniciando consume")
+    #    self.conexionMQ.start_consuming()
 
-    def reiniciar_consume(self):
-        thread = threading.Thread(target=self.consume)
-        thread.daemon = True
-        thread.start()
+    #def reiniciar_consume(self):
+    #    thread = threading.Thread(target=self.consume)
+    #    thread.daemon = True
+    #    thread.start()
 
     def obtener_ip(self):
         try:
@@ -304,27 +353,131 @@ class VistaQuarta(tk.Frame):
         texto = self.entry_texto.get()
         
         if texto:
-            
             if f"Publico: {texto}" not in self.chat_publicos:
                 self.chat_publicos[f"Publico: {texto}"] = Queue()
             # crear exchange
             self.conexionMQ.exchange_declare(exchange=f"Publico: {texto}", exchange_type='fanout')
             
+            # SI ES ENVIANDO MENSAJES PERSISTENTES O NO 
+            persistencia = self.var.get()
+            print("persistencia =", persistencia)
+
             # añadir exchange a la queue, si no esta
             try:
                 self.conexionMQ.queue_bind(exchange=f"Publico: {texto}", queue=f"Privado: {self.nombre}")
             except Exception:
-                connection = pika.BlockingConnection(pika.ConnectionParameters('10.10.1.54'))
-                self.conexionMQ = connection.channel()
-                result = self.conexionMQ.queue_declare(queue=f"Privado: {self.nombre}", exclusive=True)
-                self.conexionMQ.queue_bind(exchange=f"Privado: {self.nombre}", queue=f"Privado: {self.nombre}")
-                for name, _ in self.chat_publicos.items():
-                    self.conexionMQ.queue_bind(exchange=name, queue=f"Privado: {self.nombre}")
-                self.reiniciar_consume()
+                # connection = pika.BlockingConnection(pika.ConnectionParameters('10.10.1.54'))
+                # self.conexionMQ = connection.channel()
+                # result = self.conexionMQ.queue_declare(queue=f"Privado: {self.nombre}", exclusive=True)
+                # self.conexionMQ.queue_bind(exchange=f"Privado: {self.nombre}", queue=f"Privado: {self.nombre}")
+                # for name, _ in self.chat_publicos.items():
+                #     self.conexionMQ.queue_bind(exchange=name, queue=f"Privado: {self.nombre}")
+                # self.reiniciar_consume()
+                None
 
             # abrir ChatWindowMQ
                 
-            chat_window = ChatWindowMQ(self.nombre, texto, self.chat_publicos[f"Publico: {texto}"])
+            chat_window = ChatWindowMQ(self.nombre, texto, self.chat_publicos[f"Publico: {texto}"], persistencia)
             chat_window.start()
+
+        self.entry_texto.delete(0, tk.END)
+
+# Insult
+class VistaQuinta(tk.Frame):
+    def __init__(self, master, volver_vista_inicial, NombreCliente, channel):
+        tk.Frame.__init__(self, master)
+        self.master = master
+        self.master.geometry("400x500")
+        self.master.resizable(False, False)
+
+        with open('config.yaml', 'r') as file:
+            config = yaml.safe_load(file)
+
+        file.close()
+
+        self.grpc_server_ip = config['grpc_server']['ip']
+        self.grpc_server_port = config['grpc_server']['port']
+
+        self.rabbit_ip = config['rabbit']['ip']
+        self.rabbit_http = config['rabbit']['http']
+        self.rabbit_user = config['rabbit']['user']
+        self.rabbit_pwd = config['rabbit']['pwd']
+
+        self.channel = channel
+
+        self.nombre = NombreCliente
+
+        boton_volver_atras = tk.Button(self, text="Volver a la Vista Inicial", command=volver_vista_inicial)
+        boton_volver_atras.place(x=10, y=10)
+
+        self.entry_texto = tk.Entry(self)
+        self.entry_texto.place(relx=0.5, rely=0.4, anchor="center")
+
+        boton_imprimir = tk.Button(self, text="Enviar a cualquiera", command=self.imprimir_texto)
+        boton_imprimir.place(relx=0.5, rely=0.5, anchor="center")
+
+        self.entry_texto.bind("<Return>", lambda event: self.imprimir_texto())
+
+        self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        channel = grpc.insecure_channel(f"{self.grpc_server_ip}:{self.grpc_server_port}")
+        stub = Servicio_pb2_grpc.ClienteServidorStub(channel)
+        response = stub.CerrarSesion(Servicio_pb2.Session(Nombre=self.nombre, IP=''))
+
+        self.master.destroy()
+
+    def pedir_exchanges(self):
+
+        username = f'{self.rabbit_user}'
+        password = f'{self.rabbit_pwd}'
+        host = f'{self.rabbit_ip}'
+        port = f'{self.rabbit_http}'  # Puerto para la API de RabbitMQ
+
+        url = f'http://{host}:{port}/api/exchanges'
+
+        # Realizar la solicitud HTTP
+        response_exchanges = requests.get(url, auth=(username, password))
+
+        array = []
+
+        if response_exchanges.status_code == 200:
+            exchanges = response_exchanges.json()
+            for exchange in exchanges:
+                if not exchange['name'].startswith("amq."):
+                    if exchange['name'] != "":
+                        array.append(exchange["name"])
+        else:
+            print("Error al obtener la lista de exchanges:", response_exchanges.status_code)
+        
+        return array
+
+    def obtener_ip(self):
+        try:
+            host_name = socket.gethostname()
+            direccion_ip = socket.gethostbyname(host_name)
+            return str(direccion_ip)
+        except Exception as e:
+            print("Error al obtener la dirección IP:", e)
+
+    def imprimir_texto(self):
+
+        texto = self.entry_texto.get()
+        
+        if texto:
+            # Obtener todos los chats privados de RabbitMQ
+            chats = self.pedir_exchanges()
+            array_sin_publico = [elemento for elemento in chats if not elemento.startswith("Publico:")]
+            # eliminar de la lista != f"Privado: {self.nombre}"
+            if f"Privado: {self.nombre}" in array_sin_publico:
+                array_sin_publico.remove(f"Privado: {self.nombre}")
+            # seleccionar uno aleatoriamente 
+            if len(array_sin_publico) > 0:
+                choice = random.choice(array_sin_publico)
+                # enviar mensaje a ese exchange
+                self.channel.basic_publish(exchange=f"{choice}", routing_key='', body=f"{texto}")
+            else:
+                messagebox.showerror("Error", "No hay mas clientes conectados")
+
 
         self.entry_texto.delete(0, tk.END)
